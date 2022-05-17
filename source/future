@@ -1,0 +1,27 @@
+#include <functional>
+#include <future>
+#include <iostream>
+
+template<typename A, typename B>
+std::function<std::future<B>(std::future<A>)> fmap(std::function<B(A)> f) {
+    std::function<B(std::future<A>)> _f = [f](std::future<A> fa){
+        return f(fa.get());
+    };
+
+    return [_f](std::future<A> fa) {
+        return std::async(std::launch::deferred, _f, std::move(fa) );
+    };
+}
+
+int main() {
+    std::function<int(int)> f = [](int a) { return a * 2; };
+    std::function<std::future<int>(std::future<int>)> listF = fmap(f);
+    std::future<int> a = std::async(std::launch::deferred, [](){
+        std::cout << "begin" << std::endl;
+        return 1;
+    });
+    std::cout << "_1" << std::endl;
+    std::future<int> b = listF(std::move(a));
+    std::cout << "_2" << std::endl;
+    std::cout << b.get() << std::endl;
+}
