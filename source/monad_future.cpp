@@ -43,12 +43,13 @@ struct is_monad<std::future> {
 };
 
 template<
-    template <typename>typename Monad,
+    template <typename>typename TC,
     typename A,
     typename B
 >
-constexpr Func<Monad<A>, Monad<B>> auto _fmap(Func<A,B> auto f) {
-    return [f](Monad<A> fa) {
+    requires(Monad<TC>)
+constexpr Func<TC<A>, TC<B>> auto _fmap(Func<A,B> auto f) {
+    return [f](TC<A> fa) {
         return bind<A, B>(std::move(fa))
             ([f](A a){
                 return pure(f(a));
