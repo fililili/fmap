@@ -36,11 +36,6 @@ struct bind_t {
 template<template <typename>typename TC >
 constexpr auto bind = bind_t<TC>{};
 
-template<>
-struct is_monad<std::future> {
-    constexpr static bool value = true;
-};
-
 template<
     template <typename>typename TC,
     typename A,
@@ -77,6 +72,32 @@ auto bind_t<std::future>::operator()(std::future<A> _a) const{
         };
 }
 
+template<>
+struct is_monad<std::future> {
+    constexpr static bool value = true;
+};
+
+template<>
+template<typename A>
+std::optional<A> pure_t<std::optional>::operator()(A a) const {
+    return {a};
+}
+
+template<>
+template<typename A, typename B>
+auto bind_t<std::optional>::operator()(std::optional<A> _a) const{
+    return [_a](Func<A, std::optional<B>> auto f) {
+        if(_a)
+            return f(_a.value());
+        else return std::optional<B>{};
+    };
+}
+
+template<>
+struct is_monad<std::optional> {
+    constexpr static bool value = true;
+};
+
 int main() {
     constexpr auto f = [](int a) { return "hello world"; };
     constexpr auto listF = _fmap<std::future, int, const char *>(f);
@@ -90,4 +111,9 @@ int main() {
     std::cout << "_2" << std::endl;
 
     std::cout << b.get() << std::endl;
+
+    constexpr auto o = pure<std::optional>(1);
+    constexpr auto oListF = _fmap<std::optional, int, const char *>(f);
+    constexpr auto oo = oListF(o);
+    std::cout << oo.value() << std::endl;
 }
