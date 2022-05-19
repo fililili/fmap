@@ -2,9 +2,21 @@
 #include <future>
 #include <iostream>
 #include <type_traits>
+#include <optional>
 
 template <typename F, typename A, typename B>
 concept Func = std::is_invocable_r<B, F, A>::value;
+
+template<template <typename>typename T>
+struct is_monad {
+    constexpr static bool value = false;
+};
+
+template<template <typename>typename TC>
+constexpr bool is_monad_v = is_monad<TC>::value;
+
+template<template <typename>typename TC>
+concept Monad = is_monad_v<TC>;
 
 template<typename A>
 constexpr std::future<A> pure(A a) {
@@ -24,6 +36,11 @@ constexpr auto bind(std::future<A> fa) {
             );
         };
 }
+
+template<>
+struct is_monad<std::future> {
+    constexpr static bool value = true;
+};
 
 template<
     template <typename>typename Monad,
