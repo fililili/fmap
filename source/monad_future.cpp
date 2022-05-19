@@ -18,8 +18,18 @@ constexpr bool is_monad_v = is_monad<TC>::value;
 template<template <typename>typename TC>
 concept Monad = is_monad_v<TC>;
 
+template<template <typename>typename TC>
+struct pure_t {
+    template<typename A>
+    constexpr TC<A> operator()(A a) const;
+};
+
+template<template <typename>typename TC >
+constexpr auto pure = pure_t<TC>{};
+
+template<>
 template<typename A>
-constexpr std::future<A> pure(A a) {
+std::future<A> pure_t<std::future>::operator()(A a) const {
     return std::async(std::launch::deferred, [a](){ return a; });
 }
 
@@ -52,7 +62,7 @@ constexpr Func<TC<A>, TC<B>> auto _fmap(Func<A,B> auto f) {
     return [f](TC<A> fa) {
         return bind<A, B>(std::move(fa))
             ([f](A a){
-                return pure(f(a));
+                return pure<TC>(f(a));
             });
     };
 }
