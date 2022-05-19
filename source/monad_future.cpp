@@ -33,16 +33,26 @@ std::future<A> pure_t<std::future>::operator()(A a) const {
     return std::async(std::launch::deferred, [a](){ return a; });
 }
 
+template<template <typename>typename TC>
+struct bind_t {
+    template<typename A, typename B>
+    constexpr auto operator()(TC<A> _a) const;
+};
+
+template<template <typename>typename TC >
+constexpr auto bind = bind_t<TC>{};
+
+template<>
 template<typename A, typename B>
-constexpr auto bind(std::future<A> fa) {
-    return [fa = std::move(fa)]
+auto bind_t<std::future>::operator()(std::future<A> _a) const{
+    return [_a = std::move(_a)]
         (Func<A, std::future<B>> auto f) mutable{
             return std::async(
                 std::launch::deferred,
-                [f, fa = std::move(fa)](std::future<A>) mutable{
-                    return f(fa.get()).get();
+                [f, _a = std::move(_a)](std::future<A>) mutable{
+                    return f(_a.get()).get();
                 },
-                std::move(fa)
+                std::move(_a)
             );
         };
 }
@@ -60,7 +70,7 @@ template<
     requires(Monad<TC>)
 constexpr Func<TC<A>, TC<B>> auto _fmap(Func<A,B> auto f) {
     return [f](TC<A> fa) {
-        return bind<A, B>(std::move(fa))
+        return bind<TC>.template operator()<A, B>(std::move(fa))
             ([f](A a){
                 return pure<TC>(f(a));
             });
