@@ -27,12 +27,6 @@ struct pure_t {
 template<template <typename>typename TC >
 constexpr auto pure = pure_t<TC>{};
 
-template<>
-template<typename A>
-std::future<A> pure_t<std::future>::operator()(A a) const {
-    return std::async(std::launch::deferred, [a](){ return a; });
-}
-
 template<template <typename>typename TC>
 struct bind_t {
     template<typename A, typename B>
@@ -41,21 +35,6 @@ struct bind_t {
 
 template<template <typename>typename TC >
 constexpr auto bind = bind_t<TC>{};
-
-template<>
-template<typename A, typename B>
-auto bind_t<std::future>::operator()(std::future<A> _a) const{
-    return [_a = std::move(_a)]
-        (Func<A, std::future<B>> auto f) mutable{
-            return std::async(
-                std::launch::deferred,
-                [f, _a = std::move(_a)](std::future<A>) mutable{
-                    return f(_a.get()).get();
-                },
-                std::move(_a)
-            );
-        };
-}
 
 template<>
 struct is_monad<std::future> {
@@ -75,6 +54,27 @@ constexpr Func<TC<A>, TC<B>> auto _fmap(Func<A,B> auto f) {
                 return pure<TC>(f(a));
             });
     };
+}
+
+template<>
+template<typename A>
+std::future<A> pure_t<std::future>::operator()(A a) const {
+    return std::async(std::launch::deferred, [a](){ return a; });
+}
+
+template<>
+template<typename A, typename B>
+auto bind_t<std::future>::operator()(std::future<A> _a) const{
+    return [_a = std::move(_a)]
+        (Func<A, std::future<B>> auto f) mutable{
+            return std::async(
+                std::launch::deferred,
+                [f, _a = std::move(_a)](std::future<A>) mutable{
+                    return f(_a.get()).get();
+                },
+                std::move(_a)
+            );
+        };
 }
 
 int main() {
